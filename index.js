@@ -29,6 +29,7 @@ app.listen(port, () => {
 async function run() {
   try {
     const CourseList = client.db("A11B11").collection('Courses')
+    const UserList = client.db("A11B11").collection('users')
 
     await client.connect();
 
@@ -57,15 +58,13 @@ async function run() {
       res.send(result)
     })
 
-
-
-    app.patch('/courses/:id',async(req,res)=>{
+    app.patch('/courses/:id', async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateddata = req.body;
-      const update = { $set: updateddata};
+      const update = { $set: updateddata };
 
-      const result= await CourseList.updateOne(filter, update)
+      const result = await CourseList.updateOne(filter, update)
       res.send(result)
     })
 
@@ -75,6 +74,40 @@ async function run() {
       const result = await CourseList.deleteOne(query)
       res.send(result)
 
+    })
+
+
+
+    app.post("/login", async (req, res) => {
+      const { email } = req.body;
+      let user = await UserList.findOne({ email });
+      if (!user) {
+        const result = await UserList.insertOne(req.body);
+        return res.send(result)
+      }
+      res.send(user)
+    })
+
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await UserList.findOne(query);
+      res.send(result)
+    })
+
+    app.patch("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const updatedData = req.body
+      const filter = { email: email };
+      const update = { 
+        $set: { 
+          enrolledcourses: updatedData.updatedcourses 
+        } 
+      };
+
+      const result = await UserList.updateOne(filter, update);
+
+      res.send(result);
     })
 
     // await client.db("admin").command({ ping: 1 });
