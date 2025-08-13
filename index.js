@@ -92,7 +92,7 @@ async function run() {
       const email = req.params.email;
       const query = { email: email };
       const result = await UserList.findOne(query);
-      res.send(result)
+      res.json(result)
     })
 
     app.patch("/users/:email", async (req, res) => {
@@ -101,7 +101,7 @@ async function run() {
       const filter = { email: email };
       const update = { 
         $set: { 
-          enrolledcourses: updatedData.updatedcourses 
+          enrolledcourses: updatedData.updatedcourses
         } 
       };
 
