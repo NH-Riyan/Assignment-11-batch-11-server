@@ -18,6 +18,17 @@ const client = new MongoClient(uri, {
   }
 });
 
+const admin = require("firebase-admin");
+
+const serviceAccount = JSON.parse(
+  Buffer.from(process.env.FIREBASE_KEY_BASE64, 'base64').toString('utf8')
+);;
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
 app.get('/', (req, res) => {
   res.send('hellou')
 })
@@ -25,6 +36,28 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`port is running ${port}`)
 })
+
+
+const verifyToken = async (req, res, next) => {
+  
+  const AuthHeader = req.headers?.authorization
+
+  if (!AuthHeader || !AuthHeader.startsWith('Bearer ')) {
+    return res.status(401).send({ message: 'unauthorized access' })
+  }
+
+  const token = AuthHeader.split(' ')[1];
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(token)
+    req.decoded = decoded
+    next()
+  }
+  catch (error) {
+    return res.status(401).send({ message: 'error' })
+  }
+
+}
 
 async function run() {
   try {
@@ -46,8 +79,12 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/courses/user/:email', async (req, res) => {
+    app.get('/courses/user/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
       const result = await CourseList.find({ email }).toArray();
       res.send(result);
     })
@@ -88,8 +125,11 @@ async function run() {
       res.send(user)
     })
 
-    app.get("/users/:email", async (req, res) => {
+    app.get("/users/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
       const query = { email: email };
       const result = await UserList.findOne(query);
       res.json(result)
@@ -99,10 +139,10 @@ async function run() {
       const email = req.params.email;
       const updatedData = req.body
       const filter = { email: email };
-      const update = { 
-        $set: { 
+      const update = {
+        $set: {
           enrolledcourses: updatedData.updatedcourses
-        } 
+        }
       };
 
       const result = await UserList.updateOne(filter, update);
