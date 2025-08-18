@@ -21,8 +21,8 @@ const client = new MongoClient(uri, {
 const admin = require("firebase-admin");
 
 const serviceAccount = JSON.parse(
-  Buffer.from(process.env.FIREBASE_KEY_BASE64, 'base64').toString('utf8')
-);;
+  Buffer.from(process.env.FIREBASE_KEY, 'base64').toString('utf8')
+);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -39,7 +39,7 @@ app.listen(port, () => {
 
 
 const verifyToken = async (req, res, next) => {
-  
+
   const AuthHeader = req.headers?.authorization
 
   if (!AuthHeader || !AuthHeader.startsWith('Bearer ')) {
@@ -89,6 +89,18 @@ async function run() {
       res.send(result);
     })
 
+    app.get("/latestcourses", async (req, res) => {
+      const result = await CourseList.find().sort({ _id: -1 }).limit(6).toArray();
+
+      res.json(result);
+    });
+
+    app.get('/topcourses', async (req, res) => {
+        const result = await CourseList.find().sort({ enrollCount: -1 }) .limit(3).toArray();
+        res.json(result);
+});
+
+
     app.post('/addcourses', async (req, res) => {
       const newCourse = req.body;
       const result = await CourseList.insertOne(newCourse)
@@ -98,8 +110,16 @@ async function run() {
     app.patch('/courses/:id', async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
-      const updateddata = req.body;
-      const update = { $set: updateddata };
+
+      const { $inc, ...rest } = req.body;  // separate $inc from other fields
+      const update = {};
+
+      if (Object.keys(rest).length > 0) {
+        update.$set = rest;              // normal updates
+      }
+      if ($inc) {
+        update.$inc = $inc;              // increment updates
+      }
 
       const result = await CourseList.updateOne(filter, update)
       res.send(result)
