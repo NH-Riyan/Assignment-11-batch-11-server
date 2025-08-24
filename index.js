@@ -6,7 +6,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000
 
-app.use(cors())
+app.use(cors({
+  origin: ["https://course-era-8e163.web.app"]
+}))
 app.use(express.json())
 const uri = `mongodb+srv://${process.env.DB_User}:${process.env.DB_Pass}@cluster10.oop5ill.mongodb.net/?retryWrites=true&w=majority&appName=Cluster10`;
 
@@ -28,10 +30,10 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
+ app.get('/', (req, res) => {
+      res.send('hellou')
+    })
 
-app.get('/', (req, res) => {
-  res.send('hellou')
-})
 
 app.listen(port, () => {
   console.log(`port is running ${port}`)
@@ -64,8 +66,8 @@ async function run() {
     const CourseList = client.db("A11B11").collection('Courses')
     const UserList = client.db("A11B11").collection('users')
 
-    await client.connect();
-
+   
+   
     app.get('/courses', async (req, res) => {
       const List = CourseList.find()
       const result = await List.toArray()
@@ -96,9 +98,9 @@ async function run() {
     });
 
     app.get('/topcourses', async (req, res) => {
-        const result = await CourseList.find().sort({ enrollCount: -1 }) .limit(3).toArray();
-        res.json(result);
-});
+      const result = await CourseList.find().sort({ enrollCount: -1 }).limit(3).toArray();
+      res.json(result);
+    });
 
 
     app.post('/addcourses', async (req, res) => {
@@ -111,14 +113,14 @@ async function run() {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
 
-      const { $inc, ...rest } = req.body;  // separate $inc from other fields
+      const { $inc, ...rest } = req.body;  
       const update = {};
 
       if (Object.keys(rest).length > 0) {
-        update.$set = rest;              // normal updates
+        update.$set = rest;             
       }
       if ($inc) {
-        update.$inc = $inc;              // increment updates
+        update.$inc = $inc;              
       }
 
       const result = await CourseList.updateOne(filter, update)
@@ -134,7 +136,6 @@ async function run() {
     })
 
 
-
     app.post("/login", async (req, res) => {
       const { email } = req.body;
       let user = await UserList.findOne({ email });
@@ -143,6 +144,12 @@ async function run() {
         return res.send(result)
       }
       res.send(user)
+    })
+
+    app.get("/users", async (req, res) => {
+      const List = UserList.find()
+      const result = await List.toArray()
+      res.send(result)
     })
 
     app.get("/users/:email", verifyToken, async (req, res) => {
@@ -170,11 +177,9 @@ async function run() {
       res.send(result);
     })
 
-    // await client.db("admin").command({ ping: 1 });
-    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
 
-    //await client.close();
+  } finally {
+    //
   }
 }
 run().catch(console.dir);
